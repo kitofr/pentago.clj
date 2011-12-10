@@ -33,3 +33,11 @@
                (session/put! game-id (game/move player space board)) 
                (resp/accepted { :board (session/get game-id ) } ))
              (resp/conflict { :board board }))))
+
+(defpage [:put "/game/:id/turn"] { game-id :id }
+         (let [board (session/get game-id)
+               rq (json-data (req/ring-request))
+               corner (to-int (:corner rq))
+               dir (to-int (:dir rq))]
+           (session/put! game-id (game/restore-board (game/turn corner dir board)))
+           (resp/accepted { :board (session/get game-id) })))
