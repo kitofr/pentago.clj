@@ -15,24 +15,43 @@
 (defn to-int [x]
   (Integer/parseInt x))
 
+(defn store! [id board players]
+  (session/put! id { :board board :players players}))
+
+(defn next-player [id] (first (next (cycle ((session/get id) :players)))))
+(defn board [id] ((session/get id) :board))
+(defn players [id] ((session/get id) :players))
+
+(defn game-state [id]
+  { :game {:board (board id) 
+       :next  (next-player id)
+       :players (players id) } } )
+
 (defpage [:post "/game"] { }
-         (let [id (str (java.util.UUID/randomUUID))]
-          (session/put! id game/starting-board)
-            (resp/created { :links { :self (str "game/" id) } } )))
+         (let [id (str (java.util.UUID/randomUUID))
+               rq (json-data (req/ring-request))
+               p1 (:player1 rq)
+               p2 (:player2 rq)]
+          (store! id game/starting-board [p1 p2])
+            (resp/created (merge { :links { :self (str "game/" id) } } 
+                            (game-state id)))))
 
 (defpage "/game/:id" {game-id :id}
-         (resp/ok { :board (session/get game-id) }))
+         (resp/ok (game-state game-id)))
 
 (defpage [:put "/game/:id/:space"] { game-id :id space :space }
          (let [rq (json-data (req/ring-request))
                space (to-int space)
                player (:player rq)
-               board (session/get game-id)]
+               board (board game-id)]
            (if (game/available? space board)
              (do 
-               (session/put! game-id (game/move player space board)) 
-               (resp/accepted { :board (session/get game-id ) } ))
-             (resp/conflict { :board board }))))
+               (store! game-id (game/move player space board) (players game-id)) 
+               (resp/accepted (merge { :links { :self (str "game/" game-id) 
+                                                :turn (str "game/" game-id "/turn/{corner}")
+                                                :pass (str "game/" game-id "/pass") } } 
+                                      (game-state game-id ))))
+             (resp/conflict (game-state game-id)))))
 
 (defpage [:put "/game/:id/turn"] { game-id :id }
          (let [board (session/get game-id)
