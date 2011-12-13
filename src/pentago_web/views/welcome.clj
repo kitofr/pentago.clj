@@ -18,9 +18,9 @@
 (defn store! [id board players]
   (session/put! id { :board board :players players}))
 
-(defn next-player [id] (first (next (cycle ((session/get id) :players)))))
 (defn board [id] ((session/get id) :board))
 (defn players [id] ((session/get id) :players))
+(defn next-player [id] (first (next (cycle (players id)))))
 
 (defn game-state [id]
   { :game {:board (board id) 
@@ -31,7 +31,7 @@
   (vec (take 2 (next (cycle (players id))))))
 
 (defpage [:post "/game"] { }
-         (let [id "1" ;(str (java.util.UUID/randomUUID))
+         (let [id (str (java.util.UUID/randomUUID))
                rq (json-data (req/ring-request))
                p1 (:player1 rq)
                p2 (:player2 rq)]
