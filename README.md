@@ -1,5 +1,4 @@
 # pentago-web
-test
 
 A website written in noir. 
 
