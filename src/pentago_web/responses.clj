@@ -14,6 +14,7 @@
 
 ;ERRORS
 (defn forbidden [content] (status-response 403 content))
+(defn bad-request [content] (status-response 404 content))
 (defn not-acceptable [content] (status-response 406 content))
 (defn conflict [content] (status-response 409 content))
 

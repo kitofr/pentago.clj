@@ -6,7 +6,11 @@
             [noir.session :as session]
             [noir.content.getting-started]
             [clj-json [core :as json]])
-  (:use [noir.core :only [defpage]]))
+  (:use [noir.core]
+        [hiccup.core]
+        [hiccup.form-helpers]
+        [hiccup.page-helpers]))
+
 
 (defn json-data [rq]
   (:json-data (:params rq)))
@@ -29,14 +33,36 @@
 (defn swap-players [id]
   (vec (take 2 (next (cycle (players id))))))
 
+(defpartial layout [& content]
+            (html
+              [:head
+               [:title "Pentago... the game!"]]
+              [:body
+               content]))
+
+(defpartial game-fields [{:keys [player1 player2]}]
+            (label "player1" "Player 1: ")
+            (text-field "player1" player1)
+            (label "player2" "Player 2: ")
+            (text-field "player2" player2))
+
+(defpage [:get "/"] {:as players}
+         (layout
+           (form-to [:post "/game"]
+                    (game-fields players)
+                    (submit-button "Start"))))
+                           
 (defpage [:post "/game"] { }
          (let [id (str (java.util.UUID/randomUUID))
                rq (json-data (req/ring-request))
                p1 (:player1 rq)
                p2 (:player2 rq)]
-           (store! id game/starting-board [p1 p2])
-           (resp/created (merge { :links { :self (str "game/" id) } } 
-                                (game-state id)))))
+           (if (and p1 p2)
+             (do 
+             (store! id game/starting-board [p1 p2])
+             (resp/created (merge { :links { :self (str "game/" id) } } 
+                                  (game-state id))))
+             (resp/bad-request rq))))
 
 (defpage "/game/:id" {game-id :id}
          (resp/ok (game-state game-id)))
